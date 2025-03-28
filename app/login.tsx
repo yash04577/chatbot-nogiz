@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform } from "react-native";
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useNavigation } from "expo-router";
 import Toast from "react-native-toast-message";
@@ -58,10 +58,10 @@ export default function UserInfoScreen() {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.formContainer}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-    >
+    // <KeyboardAvoidingView
+    //   style={styles.formContainer}
+    //   behavior={Platform.OS === "ios" ? "padding" : undefined}
+    // >
       <View style={styles.form}>
         <Text style={styles.label}>Enter Your Info</Text>
         <TextInput
@@ -83,7 +83,7 @@ export default function UserInfoScreen() {
           <Text style={styles.buttonText}>Submit</Text>
         </TouchableOpacity>
       </View>
-    </KeyboardAvoidingView>
+    // </KeyboardAvoidingView>
   );
 }
 

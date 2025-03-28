@@ -3,19 +3,17 @@ import {
   StyleSheet,
   Text,
   View,
-  TextInput,
   TouchableOpacity,
-  FlatList,
-  KeyboardAvoidingView,
-  Platform,
 } from 'react-native';
 import axios from 'axios';
+import { GiftedChat } from 'react-native-gifted-chat';
 
 const HF_API_TOKEN = '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'; 
 // const MODEL = 'microsoft/DialoGPT-medium'; 
 const MODEL = 'google/flan-t5-large'; 
 
-const ChatbotScreen = () => {
+const index = () => {
+
   const [messages, setMessages] = useState<any[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -26,18 +24,24 @@ const ChatbotScreen = () => {
     containerRef?.current?.scrollToEnd({ animated: true });
   }, [messages])
 
-  const sendMessage = async () => {
-    if (!input.trim()) return;
-
-    const userMessage = { id: Date.now().toString(), text: input, from: 'user' };
-    setMessages((prev) => [...prev, userMessage]);
-    setInput('');
+  const sendMessage = async (newMessages:any = []) => {
+    const userMessage = {
+      _id: Date.now().toString(),
+      text: newMessages[0]?.text || input, // Use input if called directly
+      createdAt: new Date(),
+      user: { _id: 1 },
+    };
+  
+    if (!userMessage.text.trim()) return;
+  
+    setMessages((prev) => GiftedChat.append(prev, [userMessage])); // Use GiftedChat.append
+    setInput(''); // If you keep input state
     setLoading(true);
-
+  
     try {
       const response = await axios.post(
         `https://api-inference.huggingface.co/models/${MODEL}`,
-        { inputs: input },
+        { inputs: userMessage.text },
         {
           headers: {
             Authorization: `Bearer ${HF_API_TOKEN}`,
@@ -45,80 +49,73 @@ const ChatbotScreen = () => {
           },
         }
       );
-
-      const botText = response.data[0]?.generated_text || '🤖 No response';
+  
+      const botText = response.data[0]?.generated_text || 'No response';
       const botMessage = {
-        id: (Date.now() + 1).toString(),
+        _id: (Date.now() + 1).toString(),
         text: botText,
-        from: 'bot',
+        createdAt: new Date(),
+        user: { _id: 2, name: 'bot' },
       };
-
-      setMessages((prev) => [...prev, botMessage]);
+  
+      setMessages((prev) => GiftedChat.append(prev, [botMessage]));
     } catch (error) {
       console.error('API Error:', error);
       const botMessage = {
-        id: (Date.now() + 2).toString(),
+        _id: (Date.now() + 2).toString(),
         text: 'Failed to get response from Hugging Face',
-        from: 'bot',
+        createdAt: new Date(),
+        user: { _id: 2, name: 'bot' },
       };
-      setMessages((prev) => [...prev, botMessage]);
+      setMessages((prev) => GiftedChat.append(prev, [botMessage]));
     } finally {
       setLoading(false);
     }
   };
 
   // for initially greeting the user
-  useEffect(()=>{
+  useEffect(() => {
     const botText = `Thankyou for providing your information, How can i assist you today? `;
-      const botMessage = {
-        id: (Date.now() + 1).toString(),
-        text: botText,
-        from: 'bot',
-      };
-      setMessages([botMessage])
-  },[])
-
-  const renderItem = ({ item }: { item: { id: string; text: string; from: 'user' | 'bot' } }) => (
-    <View
-      style={[
-        styles.messageBubble,
-        item.from === 'user' ? styles.userBubble : styles.botBubble,
-      ]}
-    >
-      <Text style={styles.messageText}>{item.text}</Text>
-    </View>
-  );
+    const botMessage = {
+      _id: (Date.now() + 1).toString(),
+      text: botText,
+      createdAt: new Date(), // Required by GiftedChat
+      user: { _id: 2, name: 'bot' }, // Required by GiftedChat
+    };
+    setMessages([botMessage]);
+  }, []);
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      <FlatList
-        ref={containerRef}
-        data={messages}
-        keyExtractor={(item) => item.id}
-        renderItem={renderItem}
-        contentContainerStyle={styles.chatContainer}
+    <View style={styles.container}>
+      <GiftedChat
+        messages={messages}
+        onSend={sendMessage}
+        user={{ _id: 1 }}
+        listViewProps={{
+          ref: containerRef,
+          contentContainerStyle: styles.chatContainer,
+        }}
+        placeholder="Type your message..."
+        isTyping={loading}
+        textInputProps={{
+          editable: !loading,
+          style: styles.input,
+        }}
+        renderSend={(props:any) => (
+          <TouchableOpacity
+            onPress={() => {
+              if (!loading) props.onSend({ text: props.text.trim() }, true);
+            }}
+            style={styles.sendButton}
+            disabled={loading}
+          >
+            <Text style={{ color: '#fff' }}>{loading ? '...' : 'Send'}</Text>
+          </TouchableOpacity>
+        )}
       />
-
-      <View style={styles.inputContainer}>
-        <TextInput
-          style={styles.input}
-          placeholder="Type your message..."
-          value={input}
-          onChangeText={setInput}
-          editable={!loading}
-        />
-        <TouchableOpacity onPress={sendMessage} style={styles.sendButton} disabled={loading}>
-          <Text style={{ color: '#fff' }}>{loading ? '...' : 'Send'}</Text>
-        </TouchableOpacity>
-      </View>
-    </KeyboardAvoidingView>
+    </View>
   );
 };
-
-export default ChatbotScreen;
 
 const styles = StyleSheet.create({
   container: {
@@ -168,3 +165,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 });
+
+export default index;
